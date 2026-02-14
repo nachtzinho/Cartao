@@ -347,6 +347,7 @@ export function AdminDashboard() {
                 cardMonth={selectedCard.card_month}
                 cardYear={selectedCard.card_year}
                 cardCvv={showCvv ? selectedCard.card_cvv : '•••'}
+                focusedField={null}
               />
               
               <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
