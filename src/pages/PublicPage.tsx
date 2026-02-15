@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { ShieldCheck, Lock, Server, Search, Shield, Globe, AlertTriangle, Activity, ChevronRight, Building2, CreditCard } from 'lucide-react';
+import { ShieldCheck, Lock, Search, Shield, Globe, AlertTriangle, Activity, ChevronRight, Building2, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Base de Dados de BINs ---
@@ -262,7 +262,6 @@ export function PublicPage() {
   const resetForm = () => { setCardNumber(''); setCardName(''); setCardMonth(''); setCardYear(''); setCardCvv(''); setStatus('idle'); setBankInfo({ bank: '', level: '' }); };
 
   return (
-    // Background corrigido: w-full e min-h-screen no elemento pai para garantir cobertura total
     <div className="w-full min-h-screen flex flex-col items-center justify-center relative bg-[#0f172a] text-slate-900 font-sans overflow-x-hidden p-4">
       
       {/* Background Effects */}
