@@ -1,294 +1,59 @@
 @import url("https://fonts.googleapis.com/css?family=Source+Code+Pro:400,500,600,700|Source+Sans+Pro:400,600,700&display=swap");
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Source Sans Pro", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+}
+
 body {
-  background: #252432;
-  font-family: "Source Sans Pro", sans-serif;
-  font-size: 16px;
   margin: 0;
   padding: 0;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-/* --- Layout Principal --- */
-.wrapper {
+  min-width: 320px;
   min-height: 100vh;
-  display: flex;
-  padding: 50px 15px;
-  justify-content: center;
-  align-items: center;
+  background-color: #0f172a; /* Cor de fundo Slate-900 fixa */
+  color: white;
+  overflow-x: hidden; /* Evita rolagem horizontal indesejada */
 }
 
-@media screen and (max-width: 700px) {
-  .wrapper {
-    flex-direction: column;
-    padding: 20px 10px;
-  }
+/* Remove estilos padrão de input que atrapalham */
+input, button, select, textarea {
+  font-family: inherit;
 }
 
-/* --- Formulário --- */
-.card-form {
-  max-width: 570px;
-  width: 100%;
-  margin: 0 auto;
+/* Scrollbar personalizada e escura */
+::-webkit-scrollbar {
+  width: 8px;
 }
-
-.card-form__inner {
-  background: #fff;
-  box-shadow: 0 30px 60px 0 rgba(90, 116, 148, 0.4);
-  border-radius: 10px;
-  padding: 35px;
-  padding-top: 180px; /* Espaço para o cartão flutuante */
-  margin-top: -130px; /* Puxa o formulário para cima */
-  position: relative;
-  z-index: 1;
+::-webkit-scrollbar-track {
+  background: #0f172a;
 }
-
-.card-input {
-  margin-bottom: 20px;
-}
-
-.card-input__label {
-  font-size: 14px;
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #1a3b5d;
-  width: 100%;
-  display: block;
-}
-
-.card-input__input {
-  width: 100%;
-  height: 50px;
-  border-radius: 5px;
-  box-shadow: none;
-  border: 1px solid #ced6e0;
-  transition: all 0.3s ease-in-out;
-  font-size: 18px;
-  padding: 5px 15px;
-  background: none;
-  color: #1a3b5d;
-  font-family: "Source Sans Pro", sans-serif;
-}
-
-.card-input__input:focus {
-  border-color: #3d9cff;
-  box-shadow: 0px 10px 20px -13px rgba(32, 56, 117, 0.35);
-  outline: none;
-}
-
-.card-form__row {
-  display: flex;
-  gap: 35px;
-}
-
-.card-form__col {
-  flex: 1;
-}
-
-.card-form__col.-cvv {
-  max-width: 150px;
-}
-
-.card-form__group {
-  display: flex;
-  gap: 15px;
-}
-
-.card-form__button {
-  width: 100%;
-  height: 55px;
-  background: #2364d2;
-  border: none;
-  border-radius: 5px;
-  font-size: 22px;
-  font-weight: 500;
-  font-family: "Source Sans Pro", sans-serif;
-  box-shadow: 3px 10px 20px 0px rgba(35, 100, 210, 0.3);
-  color: #fff;
-  margin-top: 20px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.card-form__button:hover {
-  background: #1c52b5;
-}
-
-.card-form__button:disabled {
-  background: #8caad4;
-  cursor: not-allowed;
-}
-
-/* --- Cartão 3D --- */
-.card-item {
-  max-width: 430px;
-  height: 270px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  perspective: 1000px;
-}
-
-.card-item__side {
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 20px 60px 0 rgba(14, 42, 90, 0.55);
-  transform-style: preserve-3d;
-  transition: transform 0.8s cubic-bezier(0.71, 0.03, 0.56, 0.85);
-  backface-visibility: hidden;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #1c1d27;
-}
-
-.card-item.-active .card-item__side.-front {
-  transform: rotateY(180deg);
-}
-
-.card-item.-active .card-item__side.-back {
-  transform: rotateY(0deg);
-}
-
-.card-item__side.-back {
-  transform: rotateY(-180deg);
-}
-
-.card-item__bg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-.card-item__wrapper {
-  padding: 25px 15px;
-  position: relative;
-  z-index: 4;
-  height: 100%;
-  color: #fff;
-  font-family: "Source Code Pro", monospace;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.card-item__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-item__chip {
-  width: 60px;
-}
-
-.card-item__typeImg {
-  height: 45px;
-  object-fit: contain;
-}
-
-.card-item__number {
-  font-size: 27px;
-  font-weight: 500;
-  letter-spacing: 2px;
-  color: #fff;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-  margin: 15px 0;
-}
-
-.card-item__content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.card-item__info {
-  color: #fff;
-  text-transform: uppercase;
-}
-
-.card-item__holder {
-  opacity: 0.7;
-  font-size: 13px;
-  margin-bottom: 5px;
-}
-
-.card-item__name {
-  font-size: 18px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-}
-
-.card-item__date {
-  text-align: right;
-}
-
-.card-item__dateTitle {
-  opacity: 0.7;
-  font-size: 13px;
-  margin-bottom: 5px;
-  display: block;
-}
-
-.card-item__band {
-  background: rgba(0, 0, 19, 0.8);
-  width: 100%;
-  height: 50px;
-  margin-top: 30px;
-  position: relative;
-  z-index: 2;
-}
-
-.card-item__cvv {
-  text-align: right;
-  padding: 15px;
-  position: relative;
-  z-index: 2;
-  color: #fff;
-}
-
-.card-item__cvvBand {
-  background: #fff;
-  color: #1a3b5d;
-  height: 45px;
+::-webkit-scrollbar-thumb {
+  background: #334155;
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 10px;
-  font-size: 18px;
-  margin-bottom: 20px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
-/* Foco animado */
-.card-item__focus {
-  position: absolute;
-  z-index: 3;
-  border: 2px solid rgba(255, 255, 255, 0.65);
-  border-radius: 5px;
-  transition: all 0.35s cubic-bezier(0.71, 0.03, 0.56, 0.85);
-  pointer-events: none;
-  opacity: 0;
+/* Animação de Scanline para o Terminal */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
 }
 
-.card-item__focus.-active {
-  opacity: 1;
+.animate-scanline {
+  animation: scanline 2s linear infinite;
 }
 
-@media screen and (max-width: 480px) {
-  .card-item { max-width: 310px; height: 220px; }
-  .card-item__number { font-size: 18px; }
-  .card-form__row { flex-direction: column; gap: 20px; }
-  .card-form__col.-cvv { max-width: 100%; }
+/* Remove as setinhas de inputs numéricos */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
 }
