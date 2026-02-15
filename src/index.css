@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 :root {
-  font-family: "Source Sans Pro", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Source Sans Pro", system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark;
@@ -14,44 +14,29 @@
 body {
   margin: 0;
   padding: 0;
-  min-width: 320px;
+  width: 100%;
   min-height: 100vh;
-  background-color: #0f172a; /* Cor de fundo Slate-900 fixa */
-  color: white;
-  overflow-x: hidden; /* Evita rolagem horizontal indesejada */
+  background-color: #0f172a; /* Garante o fundo azul escuro */
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Remove estilos padrão de input que atrapalham */
+/* Garante que inputs não tenham estilo padrão feio */
 input, button, select, textarea {
   font-family: inherit;
+  outline: none;
 }
 
-/* Scrollbar personalizada e escura */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #0f172a;
-}
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
-
-/* Animação de Scanline para o Terminal */
+/* Animação do Terminal */
 @keyframes scanline {
   0% { transform: translateY(-100%); }
   100% { transform: translateY(100%); }
 }
-
 .animate-scanline {
   animation: scanline 2s linear infinite;
 }
 
-/* Remove as setinhas de inputs numéricos */
+/* Remove setas de input numérico */
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
   -webkit-appearance: none; 
