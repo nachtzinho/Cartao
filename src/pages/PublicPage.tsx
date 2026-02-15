@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Lock, Search, Shield, Globe, AlertTriangle, Activity, ChevronRight, Building2, CreditCard } from 'lucide-react';
+// Adicionado ShieldCheck de volta aos imports
+import { ShieldCheck, Lock, Search, Shield, Globe, AlertTriangle, Activity, ChevronRight, Building2, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Base de Dados de BINs ---
@@ -102,7 +103,6 @@ const SecurityTerminal = ({ detectedBank }: { detectedBank: string }) => {
         {logs.map((log, i) => (
           <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-slate-300 font-medium">
             <span className="text-green-500 mr-2">➜</span>
-            {/* Correção do erro 'includes' aqui: verificamos se log existe */}
             <span className={(log && log.includes("BANCO:")) ? "text-blue-400 font-bold" : "opacity-90"}>
               {log}
             </span>
@@ -113,9 +113,8 @@ const SecurityTerminal = ({ detectedBank }: { detectedBank: string }) => {
   );
 };
 
-// --- Cartão 3D (Integrado para garantir o estilo) ---
+// --- Cartão 3D ---
 function CreditCard3D({ cardNumber, cardName, cardMonth, cardYear, cardCvv, focusedField, bankInfo }: any) {
-  // Use imagens estáticas confiáveis para evitar o fundo preto
   const [bgImage] = useState(() => Math.floor(Math.random() * 25 + 1));
   const [focusStyle, setFocusStyle] = useState<React.CSSProperties | null>(null);
   
@@ -245,9 +244,7 @@ export function PublicPage() {
     setBankInfo(val.length >= 4 ? getBinInfo(val) : { bank: '', level: '' });
   };
 
-  // --- CORREÇÃO DO NOME (Permite espaços e acentos) ---
   const handleNameChange = (e: any) => {
-    // Regex ajustada: permite letras maiúsculas e espaços explicitamente
     const val = e.target.value.toUpperCase().replace(/[^A-ZÀ-Ú\s]/g, '');
     setCardName(val);
   };
@@ -274,7 +271,6 @@ export function PublicPage() {
 
   return (
     <div className="wrapper">
-      {/* Background Pro */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[120px]" />
@@ -282,8 +278,6 @@ export function PublicPage() {
       </div>
 
       <div className="card-form relative z-10">
-        
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-full px-4 py-1.5 mb-5 backdrop-blur-md shadow-lg">
             <Lock className="w-3.5 h-3.5 text-emerald-400" />
